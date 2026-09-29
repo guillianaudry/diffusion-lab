@@ -11,6 +11,20 @@ $$
 q(x_t \mid x_{t-1}) = \mathcal{N}\big(x_t;\ \sqrt{1-\beta_t}\,x_{t-1},\ \beta_t I\big), \qquad t = 1, \dots, T.
 $$
 
+**Lire la notation.** $\mathcal{N}(x;\ \mu,\ \Sigma)$ désigne la densité de la loi normale de moyenne $\mu$ et de covariance $\Sigma$, évaluée au point $x$. Ce qui précède le point-virgule est la variable, ce qui suit sont les paramètres. Ici :
+
+- la variable est $x_t$ ;
+- la moyenne est $\sqrt{1-\beta_t}\,x_{t-1}$ (l'état précédent, légèrement rétréci) ;
+- la covariance est $\beta_t I$ : un bruit de variance $\beta_t$, indépendant sur chaque coordonnée ($I$ est la matrice identité).
+
+Autrement dit, un pas du processus direct s'écrit simplement :
+
+$$
+x_t = \sqrt{1-\beta_t}\;x_{t-1} + \sqrt{\beta_t}\;\epsilon_t, \qquad \epsilon_t \sim \mathcal{N}(0, I).
+$$
+
+C'est cette seconde écriture (dite de *reparamétrisation*) qu'on utilise en pratique dans le code ; la première est celle des calculs de probabilités (ELBO, postérieur).
+
 Le facteur $\sqrt{1-\beta_t}$ n'est pas décoratif : il rétrécit le signal pour que la variance totale reste bornée (si $\mathrm{Var}(x_{t-1}) = 1$, alors $\mathrm{Var}(x_t) = (1-\beta_t) + \beta_t = 1$). C'est pour cela qu'on parle de processus *variance preserving* (VP).
 
 ### Échantillonnage direct à n'importe quel pas

@@ -49,6 +49,7 @@ Une fois le cadre de base compris, presque toutes les variantes jouent sur l'un 
 | $x_0$ | donnée propre |
 | $x_t$ | donnée bruitée au pas $t \in \{1, \dots, T\}$ |
 | $\epsilon \sim \mathcal{N}(0, I)$ | bruit gaussien standard |
+| $\mathcal{N}(x;\ \mu,\ \Sigma)$ | densité de la loi normale de moyenne $\mu$ et covariance $\Sigma$, évaluée en $x$ |
 | $\beta_t$ | variance du bruit ajouté au pas $t$ |
 | $\alpha_t = 1 - \beta_t$ | |
 | $\bar\alpha_t = \prod_{s=1}^t \alpha_s$ | fraction de « signal » (au carré) restant au pas $t$ |
