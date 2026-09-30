@@ -85,3 +85,14 @@ def test_guidance_scale_zero_is_unconditional(setup):
     y = torch.ones(4000, dtype=torch.long)
     x = d.ddim_sample_loop(oracle, (4000, 2), steps=50, y=y, guidance_scale=0.0)
     _check_mixture(x)
+
+
+def test_trajectory_and_pred_x0_outputs(setup):
+    """Options de retour utilisées pour les figures de trajectoire."""
+    d, oracle = setup
+    x, traj, x0s = d.ddim_sample_loop(oracle, (16, 2), steps=10, return_trajectory=True, return_pred_x0=True)
+    assert len(traj) == 11 and len(x0s) == 10
+    assert torch.equal(traj[-1], x)
+    assert torch.allclose(x0s[-1], x)  # au dernier pas DDIM, x_0 = x̂_0
+    per_example, t = d.training_losses(oracle, torch.randn(8, 2))
+    assert per_example.shape == (8,) and t.shape == (8,)

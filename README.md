@@ -42,6 +42,7 @@ diffusion-lab/
 │   ├── analytic.py           # débruiteur exact pour mélange de gaussiennes
 │   ├── data.py               # données 2D jouets, MNIST
 │   ├── utils.py              # EMA, graines, grilles d'images
+│   ├── viz.py                # figures : perte, trajectoires, animation GIF
 │   └── models/
 │       ├── embeddings.py     # embedding sinusoïdal du temps (+ classe)
 │       ├── mlp.py            # réseau pour données 2D

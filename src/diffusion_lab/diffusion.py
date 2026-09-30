@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 PREDICTIONS = ("eps", "x0", "v")
 
@@ -98,15 +97,16 @@ class GaussianDiffusion(nn.Module):
     # ------------------------------------------------------------------
     # Entraînement
     # ------------------------------------------------------------------
-    def training_loss(
+    def training_losses(
         self,
         model: nn.Module,
         x0: torch.Tensor,
         y: torch.Tensor | None = None,
         p_uncond: float = 0.0,
-    ) -> torch.Tensor:
-        """Perte L_simple (régression MSE sur la cible choisie).
+    ):
+        """Perte L_simple par exemple : renvoie (perte de chaque exemple (B,), pas t tirés (B,)).
 
+        Utile pour suivre la perte en fonction du niveau de bruit.
         Si y est fourni et p_uncond > 0, la condition est remplacée par le jeton ∅
         avec probabilité p_uncond (entraînement pour la classifier-free guidance).
         """
@@ -118,7 +118,19 @@ class GaussianDiffusion(nn.Module):
             drop = torch.rand(B, device=x0.device) < p_uncond
             y = torch.where(drop, torch.full_like(y, model.num_classes), y)
         out = model(x_t, t, y)
-        return F.mse_loss(out, self.training_target(x0, noise, t))
+        per_example = ((out - self.training_target(x0, noise, t)) ** 2).flatten(1).mean(1)
+        return per_example, t
+
+    def training_loss(
+        self,
+        model: nn.Module,
+        x0: torch.Tensor,
+        y: torch.Tensor | None = None,
+        p_uncond: float = 0.0,
+    ) -> torch.Tensor:
+        """Perte L_simple moyenne (régression MSE sur la cible choisie)."""
+        per_example, _ = self.training_losses(model, x0, y, p_uncond)
+        return per_example.mean()
 
     # ------------------------------------------------------------------
     # Prédictions (avec guidance optionnelle)
@@ -184,17 +196,35 @@ class GaussianDiffusion(nn.Module):
         var_type: str = "posterior",
         x_T: torch.Tensor | None = None,
         return_trajectory: bool = False,
+        return_pred_x0: bool = False,
     ):
+        """Échantillonnage DDPM.
+
+        return_trajectory : renvoie aussi [x_T, x_{T-1}, ..., x_0] (T + 1 éléments).
+        return_pred_x0    : renvoie aussi les x̂_0 prédits à chaque pas (T éléments,
+                            le k-ième est prédit à partir de trajectory[k]).
+        """
         device = self.betas.device
         x = torch.randn(shape, device=device) if x_T is None else x_T.to(device)
-        trajectory = [x]
+        trajectory, pred_x0 = [x], []
         for i in reversed(range(self.T)):
             t = torch.full((shape[0],), i, device=device, dtype=torch.long)
             x0_hat, _ = self.model_predictions(model, x, t, y, guidance_scale, clip_x0)
+            if return_pred_x0:
+                pred_x0.append(x0_hat)
             x = self.ddpm_step(x, x0_hat, i, var_type)
             if return_trajectory:
                 trajectory.append(x)
-        return (x, trajectory) if return_trajectory else x
+        return self._pack(x, trajectory, pred_x0, return_trajectory, return_pred_x0)
+
+    @staticmethod
+    def _pack(x, trajectory, pred_x0, return_trajectory, return_pred_x0):
+        out = (x,)
+        if return_trajectory:
+            out += (trajectory,)
+        if return_pred_x0:
+            out += (pred_x0,)
+        return out if len(out) > 1 else x
 
     # ------------------------------------------------------------------
     # Échantillonnage DDIM — notes/03_ddim_echantillonnage.md
@@ -238,15 +268,23 @@ class GaussianDiffusion(nn.Module):
         clip_x0: bool = False,
         x_T: torch.Tensor | None = None,
         return_trajectory: bool = False,
+        return_pred_x0: bool = False,
     ):
+        """Échantillonnage DDIM (mêmes options de retour que p_sample_loop).
+
+        Les indices de temps parcourus sont donnés par self.ddim_timesteps(steps) :
+        trajectory[k] et pred_x0[k] correspondent à l'indice ddim_timesteps(steps)[k].
+        """
         device = self.betas.device
         x = torch.randn(shape, device=device) if x_T is None else x_T.to(device)
-        trajectory = [x]
+        trajectory, pred_x0 = [x], []
         ts = self.ddim_timesteps(steps)
         for i, i_prev in zip(ts, ts[1:] + [-1]):
             t = torch.full((shape[0],), i, device=device, dtype=torch.long)
             x0_hat, eps_hat = self.model_predictions(model, x, t, y, guidance_scale, clip_x0)
+            if return_pred_x0:
+                pred_x0.append(x0_hat)
             x = self.ddim_step(x, x0_hat, eps_hat, i, i_prev, eta)
             if return_trajectory:
                 trajectory.append(x)
-        return (x, trajectory) if return_trajectory else x
+        return self._pack(x, trajectory, pred_x0, return_trajectory, return_pred_x0)
