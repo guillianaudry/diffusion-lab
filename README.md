@@ -50,6 +50,7 @@ diffusion-lab/
 ├── scripts/
 │   ├── train_toy.py          # entraînement 2D + toutes les figures
 │   ├── train_mnist.py        # entraînement MNIST
+│   ├── compare_parametrizations.py  # expérience ε / x0 / v
 │   └── sample.py             # échantillonnage depuis un checkpoint
 └── tests/                    # pytest
 ```
@@ -82,6 +83,19 @@ python scripts/sample.py runs/mnist_cosine_v_cond/checkpoint.pt --class-label 3 
 ```
 
 Les résultats sont écrits dans `runs/<nom>/` (ignoré par git).
+
+## Expériences
+
+**ε, $x_0$ ou $v$ : quelle cible prédire ?** (voir notes/01_ddpm.md, section 7)
+
+```bash
+python scripts/train_mnist.py --epochs 10 --prediction eps --name cmp_eps
+python scripts/train_mnist.py --epochs 10 --prediction v   --name cmp_v
+python scripts/train_mnist.py --epochs 10 --prediction x0  --name cmp_x0   # facultatif
+python scripts/compare_parametrizations.py --runs runs/cmp_eps runs/cmp_v runs/cmp_x0
+```
+
+Produit dans `runs/compare/` l'erreur sur $\hat x_0$ et $\hat\epsilon$ selon $t$, et les images générées par DDIM avec 1 à 100 pas, avec et sans troncature de $\hat x_0$.
 
 ## Ajouter une méthode
 

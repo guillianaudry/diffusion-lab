@@ -231,7 +231,8 @@ class GaussianDiffusion(nn.Module):
     # ------------------------------------------------------------------
     def ddim_timesteps(self, steps: int) -> list[int]:
         """Sous-suite décroissante de `steps` indices régulièrement espacés dans [0, T-1]."""
-        ts = torch.linspace(0, self.T - 1, steps).round().long().unique()
+        # On part de T-1 : avec un seul pas, on doit aller de x_T (bruit pur) à x_0.
+        ts = torch.linspace(self.T - 1, 0, steps).round().long().unique()
         return ts.flip(0).tolist()
 
     def ddim_step(

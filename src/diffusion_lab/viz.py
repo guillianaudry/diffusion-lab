@@ -102,6 +102,50 @@ def plot_training_curves(
     plt.close(fig)
 
 
+def plot_curves_by_t(path: str, t_values, curves: dict, ylabel: str, title: str, logy: bool = True) -> None:
+    """Une courbe par modèle en fonction de t (curves : {nom: valeurs})."""
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    for k, (label, values) in enumerate(curves.items()):
+        ax.plot(t_values, values, "o-", ms=3, lw=1.5, color=f"C{k}", label=label)
+    if logy:
+        ax.set_yscale("log")
+    ax.set_xlabel("pas de bruit t")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize=10)
+    ax.grid(alpha=0.3, which="both")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+
+def plot_steps_comparison(path: str, results: dict, steps, nrow: int = 4, title: str | None = None) -> None:
+    """Tableau modèles × nombre de pas ; chaque case est une grille d'images générées.
+
+    results : {nom du modèle: [lot d'images pour steps[0], lot pour steps[1], ...]}.
+    """
+    names = list(results)
+    fig, axes = plt.subplots(
+        len(names), len(steps), figsize=(1.9 * len(steps) + 0.6, 1.9 * len(names) + 0.6), squeeze=False
+    )
+    for r, name in enumerate(names):
+        for c, s in enumerate(steps):
+            ax = axes[r, c]
+            grid = image_grid(results[name][c], nrow)
+            ax.imshow(grid, cmap="gray" if grid.ndim == 2 else None, vmin=0, vmax=1)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            if r == 0:
+                ax.set_title(f"{s} pas", fontsize=9)
+            if c == 0:
+                ax.set_ylabel(name, fontsize=9)
+    if title:
+        fig.suptitle(title, fontsize=10)
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
+    plt.close(fig)
+
+
 # ----------------------------------------------------------------------
 # Trajectoires
 # ----------------------------------------------------------------------

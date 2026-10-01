@@ -50,3 +50,12 @@ def test_posterior_mean_matches_eps_formula():
         beta, ab = d.betas[i], d.alphas_cumprod[i]
         expected = (xt - beta / (1 - ab).sqrt() * eps) / (1 - beta).sqrt()
         assert torch.allclose(mean, expected, atol=1e-4)
+
+
+def test_ddim_timesteps_start_from_noise():
+    """Le premier pas DDIM part toujours de x_T, même avec un seul pas."""
+    d = GaussianDiffusion(get_beta_schedule("linear", 1000))
+    assert d.ddim_timesteps(1) == [999]
+    assert d.ddim_timesteps(2) == [999, 0]
+    ts = d.ddim_timesteps(50)
+    assert ts[0] == 999 and ts[-1] == 0 and len(ts) == 50
